@@ -16,7 +16,7 @@ export default function AboTeaser() {
           e.preventDefault();
           console.log("Abo CTA clicked – placeholder");
         }}
-        className="inline-block h-10 px-5 leading-10 rounded-sm bg-foreground text-background text-xs sm:text-sm font-semibold tracking-wide uppercase hover:bg-foreground/90 transition-colors"
+        className="inline-flex items-center justify-center h-10 px-5 rounded-sm bg-foreground text-background text-xs sm:text-sm font-semibold tracking-wide uppercase hover:bg-foreground/90 transition-colors"
       >
         Jetzt abonnieren
       </a>
