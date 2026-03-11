@@ -13,6 +13,7 @@ function getCachedAuthor(slug: string): string | null {
 /**
  * Async-resolves the real author for a post.
  * Shows nothing until resolved to avoid flashing wrong names.
+ * Uses post.link for the correct full URL.
  */
 export function useResolvedAuthor(post: WPPost | null | undefined): string | null {
   const [name, setName] = useState<string | null>(() =>
@@ -29,11 +30,11 @@ export function useResolvedAuthor(post: WPPost | null | undefined): string | nul
     }
 
     let cancelled = false;
-    resolveAuthor(post.slug).then((resolved) => {
+    resolveAuthor(post.slug, post.link).then((resolved) => {
       if (!cancelled && resolved) setName(resolved);
     });
     return () => { cancelled = true; };
-  }, [post?.slug]);
+  }, [post?.slug, post?.link]);
 
   return name;
 }
