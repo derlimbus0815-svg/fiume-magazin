@@ -21,6 +21,12 @@ export interface WPPost {
       };
     }>;
     "wp:term"?: Array<Array<{ id: number; name: string; slug: string }>>;
+    author?: Array<{
+      id: number;
+      name: string;
+      avatar_urls?: Record<string, string>;
+      description?: string;
+    }>;
   };
 }
 
@@ -39,7 +45,7 @@ export interface WPPage {
   content: { rendered: string };
 }
 
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 5 * 60 * 1000;
 
 function getCached<T>(key: string): T | null {
   try {
@@ -59,9 +65,7 @@ function getCached<T>(key: string): T | null {
 function setCache(key: string, data: unknown) {
   try {
     localStorage.setItem(`fiume_cache_${key}`, JSON.stringify({ data, timestamp: Date.now() }));
-  } catch {
-    // storage full, ignore
-  }
+  } catch {}
 }
 
 async function wpFetch<T>(endpoint: string, cacheKey: string): Promise<T> {
@@ -99,14 +103,23 @@ export function getPostImage(post: WPPost): string | null {
   const media = post._embedded?.["wp:featuredmedia"]?.[0];
   if (!media) return null;
   return (
-    media.media_details?.sizes?.medium_large?.source_url ||
     media.media_details?.sizes?.large?.source_url ||
+    media.media_details?.sizes?.medium_large?.source_url ||
     media.source_url
   );
 }
 
 export function getPostCategories(post: WPPost): Array<{ id: number; name: string; slug: string }> {
   return post._embedded?.["wp:term"]?.[0] || [];
+}
+
+export function getPostAuthor(post: WPPost): { name: string; avatar?: string } | null {
+  const author = post._embedded?.author?.[0];
+  if (!author) return null;
+  return {
+    name: author.name,
+    avatar: author.avatar_urls?.["96"] || author.avatar_urls?.["48"],
+  };
 }
 
 export function stripHtml(html: string): string {

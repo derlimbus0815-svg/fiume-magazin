@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 
 export function useDarkMode() {
   const [isDark, setIsDark] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("fiume_dark_mode") === "true";
+    if (typeof window === "undefined") return true;
+    const stored = localStorage.getItem("fiume_dark_mode");
+    // Default to dark if no preference stored
+    return stored === null ? true : stored === "true";
   });
 
   useEffect(() => {
