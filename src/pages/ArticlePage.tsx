@@ -1,10 +1,11 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Share2, Bookmark, BookmarkCheck } from "lucide-react";
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+
 import { useWPPost } from "@/hooks/use-wp-posts";
-import { getPostImage, getPostCategories, getPostAuthor, fetchRealAuthor, formatDate } from "@/lib/wp-api";
+import { getPostImage, getPostCategories, formatDate } from "@/lib/wp-api";
 import { useBookmarks } from "@/hooks/use-bookmarks";
+import { useResolvedAuthor } from "@/hooks/use-resolved-author";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorScreen from "@/components/ErrorScreen";
 import SocialFooter from "@/components/SocialFooter";
@@ -14,18 +15,7 @@ export default function ArticlePage() {
   const navigate = useNavigate();
   const { data: post, isLoading, error, refetch } = useWPPost(slug || "");
   const { isBookmarked, toggle } = useBookmarks();
-  const [authorName, setAuthorName] = useState<string | null>(null);
-
-  // Try to async-fetch the real author
-  useEffect(() => {
-    if (!post) return;
-    const syncAuthor = getPostAuthor(post);
-    setAuthorName(syncAuthor?.name || null);
-
-    fetchRealAuthor(post.slug).then((name) => {
-      if (name) setAuthorName(name);
-    });
-  }, [post]);
+  const authorName = useResolvedAuthor(post);
 
   if (isLoading) return <LoadingSpinner />;
   if (error || !post) return <ErrorScreen message="Artikel nicht gefunden." onRetry={() => refetch()} />;

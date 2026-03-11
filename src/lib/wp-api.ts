@@ -114,7 +114,7 @@ export function getPostCategories(post: WPPost): Array<{ id: number; name: strin
 }
 
 // Static author map: slug → real author name
-const AUTHOR_MAP: Record<string, string> = {
+export const AUTHOR_MAP: Record<string, string> = {
   "what-do-you-do-sir": "Yotam Givoli",
   "das-amitabha-sutra": "Sebastian Schwaerzel",
   "exkulpation-gottlos": "Ledio Albani",
@@ -154,34 +154,69 @@ export function getPostAuthor(post: WPPost): { name: string; avatar?: string } |
   return { name: author.name };
 }
 
-// Async fetch of the real author from the rendered article page
-export async function fetchRealAuthor(slug: string): Promise<string | null> {
-  // Already in map
+// In-flight promise cache to deduplicate concurrent author fetches
+const authorFetchCache = new Map<string, Promise<string | null>>();
+
+/**
+ * Central author resolution: map → localStorage → scrape from web.
+ * Deduplicates in-flight requests so infinite scroll doesn't spam.
+ */
+export async function resolveAuthor(slug: string): Promise<string | null> {
+  // 1. Static map
   if (AUTHOR_MAP[slug]) return AUTHOR_MAP[slug];
 
-  // Check cache
+  // 2. localStorage cache
   try {
     const cached = localStorage.getItem(`fiume_author_${slug}`);
     if (cached) return cached;
   } catch {}
 
+  // 3. Deduplicated fetch
+  if (authorFetchCache.has(slug)) return authorFetchCache.get(slug)!;
+
+  const promise = fetchAuthorFromWeb(slug);
+  authorFetchCache.set(slug, promise);
+
+  try {
+    const result = await promise;
+    return result;
+  } finally {
+    // Keep successful results cached for 60s to avoid re-fetching
+    setTimeout(() => authorFetchCache.delete(slug), 60_000);
+  }
+}
+
+async function fetchAuthorFromWeb(slug: string): Promise<string | null> {
   try {
     const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://fiume-magazin.com/${slug}/`)}`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const html = await res.text();
 
-    // Parse "Von [Name]" from Elementor custom field
-    const match = html.match(/elementor-post-info__item--type-custom[^>]*>[\s]*Von\s+([^<]+)/i);
-    if (match?.[1]) {
-      const name = match[1].trim();
-      try { localStorage.setItem(`fiume_author_${slug}`, name); } catch {}
-      return name;
+    // Try multiple patterns for "Von [Name]"
+    const patterns = [
+      /elementor-post-info__item--type-custom[^>]*>[\s]*Von\s+([^<]+)/i,
+      />Von\s+([^<]{2,60})</i,
+      /class="[^"]*author[^"]*"[^>]*>[\s]*Von\s+([^<]+)/i,
+    ];
+
+    for (const pattern of patterns) {
+      const match = html.match(pattern);
+      if (match?.[1]) {
+        const name = match[1].trim();
+        if (name && name !== "admin" && name.length > 1) {
+          try { localStorage.setItem(`fiume_author_${slug}`, name); } catch {}
+          return name;
+        }
+      }
     }
   } catch {}
 
   return null;
 }
+
+// Keep fetchRealAuthor as alias for backward compat
+export const fetchRealAuthor = resolveAuthor;
 
 export function stripHtml(html: string): string {
   const doc = new DOMParser().parseFromString(html, "text/html");
