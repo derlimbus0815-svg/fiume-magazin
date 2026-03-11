@@ -8,7 +8,7 @@ export default function AboTeaser() {
         <h3 className="font-serif text-base sm:text-lg font-semibold">FIUME Print abonnieren</h3>
       </div>
       <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed mb-4">
-        Mit einem Abonnement der FIUME-Printausgabe fördern Sie Kultur, Tradition und unabhängige Publizistik – und erhalten ausgewählte Texte in gedruckter Form.
+        Mit einem Abonnement der FIUME-Printausgabe fördern Sie Kultur, Tradition und unabhängige Publizistik.
       </p>
       <a
         href="#"
@@ -16,10 +16,10 @@ export default function AboTeaser() {
           e.preventDefault();
           console.log("Abo CTA clicked – placeholder");
         }}
-        className="inline-flex items-center justify-center h-10 px-5 rounded-sm bg-foreground text-background text-xs sm:text-sm font-semibold tracking-wide uppercase hover:bg-foreground/90 transition-colors"
-      >
+        className="inline-flex items-center justify-center h-10 px-5 rounded-sm bg-foreground text-background text-xs sm:text-sm font-semibold tracking-wide uppercase hover:bg-foreground/90 transition-colors">
+        
         Jetzt abonnieren
       </a>
-    </section>
-  );
+    </section>);
+
 }
