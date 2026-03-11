@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Share2, Bookmark, BookmarkCheck } from "lucide-react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 import { useWPPost } from "@/hooks/use-wp-posts";
 import { getPostImage, getPostCategories, formatDate } from "@/lib/wp-api";
@@ -26,11 +27,25 @@ export default function ArticlePage() {
 
   const handleShare = async () => {
     if (navigator.share) {
-      await navigator.share({
-        title: post.title.rendered,
-        url: window.location.href,
-      }).catch(() => {});
+      try {
+        await navigator.share({ title: post.title.rendered, url: window.location.href });
+        return;
+      } catch {}
     }
+    const url = window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    toast.success("Link kopiert");
   };
 
   return (
