@@ -24,11 +24,24 @@ export default function PostCard({ post, variant = "compact", isBookmarked, onTo
     const shareUrl = `${window.location.origin}/artikel/${post.slug}`;
     const shareTitle = stripHtml(post.title.rendered);
     if (navigator.share) {
-      await navigator.share({ title: shareTitle, url: shareUrl }).catch(() => {});
-    } else {
-      await navigator.clipboard.writeText(shareUrl);
-      toast.success("Link kopiert");
+      try {
+        await navigator.share({ title: shareTitle, url: shareUrl });
+        return;
+      } catch {}
     }
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = shareUrl;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    toast.success("Link kopiert");
   };
 
   const BookmarkButton = () => (

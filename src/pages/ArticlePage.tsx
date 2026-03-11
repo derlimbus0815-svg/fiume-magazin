@@ -27,11 +27,25 @@ export default function ArticlePage() {
 
   const handleShare = async () => {
     if (navigator.share) {
-      await navigator.share({
-        title: post.title.rendered,
-        url: window.location.href,
-      }).catch(() => {});
+      try {
+        await navigator.share({ title: post.title.rendered, url: window.location.href });
+        return;
+      } catch {}
     }
+    const url = window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    toast.success("Link kopiert");
   };
 
   return (
