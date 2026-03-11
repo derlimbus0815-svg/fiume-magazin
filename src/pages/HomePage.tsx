@@ -44,6 +44,7 @@ export default function HomePage() {
   const { data: categories } = useWPCategories();
   const { isBookmarked, toggle } = useBookmarks();
   const navigate = useNavigate();
+  const { isDark, toggle: toggleTheme } = useDarkMode();
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 

@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Share2, Bookmark, BookmarkCheck } from "lucide-react";
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { } from "react";
 import { useWPPost } from "@/hooks/use-wp-posts";
 import { getPostImage, getPostCategories, formatDate } from "@/lib/wp-api";
 import { useBookmarks } from "@/hooks/use-bookmarks";

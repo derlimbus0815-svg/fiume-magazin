@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Bookmark, BookmarkCheck } from "lucide-react";
-import { type WPPost, getPostImage, getPostCategories, getPostAuthor, stripHtml, formatDate } from "@/lib/wp-api";
+import { type WPPost, getPostImage, getPostCategories, stripHtml, formatDate } from "@/lib/wp-api";
+import { useResolvedAuthor } from "@/hooks/use-resolved-author";
 
 interface PostCardProps {
   post: WPPost;
@@ -14,7 +15,7 @@ export default function PostCard({ post, variant = "compact", isBookmarked, onTo
   const navigate = useNavigate();
   const image = getPostImage(post);
   const categories = getPostCategories(post);
-  const author = getPostAuthor(post);
+  const authorName = useResolvedAuthor(post);
   const excerpt = stripHtml(post.excerpt.rendered).slice(0, 120);
 
   const BookmarkButton = () => (
@@ -51,9 +52,7 @@ export default function PostCard({ post, variant = "compact", isBookmarked, onTo
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               loading="eager"
             />
-            {/* Gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-            {/* Content overlay */}
             <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6">
               {categories[0] && (
                 <span className="inline-block text-[10px] sm:text-xs font-semibold tracking-[0.2em] uppercase text-accent-foreground bg-accent/90 px-2.5 py-0.5 rounded-sm">
@@ -67,9 +66,9 @@ export default function PostCard({ post, variant = "compact", isBookmarked, onTo
               <p className="text-white/70 text-xs sm:text-sm mt-2 leading-relaxed line-clamp-2">{excerpt}…</p>
               <div className="flex items-center justify-between mt-3">
                 <div className="flex items-center gap-2">
-                  {author && (
+                  {authorName && (
                     <span className="text-white/60 text-[10px] sm:text-xs font-medium">
-                      {author.name}
+                      {authorName}
                     </span>
                   )}
                   <span className="text-white/40 text-[10px]">·</span>
@@ -92,8 +91,8 @@ export default function PostCard({ post, variant = "compact", isBookmarked, onTo
             <p className="text-muted-foreground text-sm mt-2 leading-relaxed">{excerpt}…</p>
             <div className="flex items-center justify-between mt-3">
               <div className="flex items-center gap-2">
-                {author && (
-                  <span className="text-muted-foreground text-xs">{author.name}</span>
+                {authorName && (
+                  <span className="text-muted-foreground text-xs">{authorName}</span>
                 )}
                 <time className="text-xs text-muted-foreground tracking-wide uppercase">
                   {formatDate(post.date)}
@@ -107,7 +106,6 @@ export default function PostCard({ post, variant = "compact", isBookmarked, onTo
     );
   }
 
-  // Grid variant – vertical card for 2-column layout
   if (variant === "grid") {
     return (
       <motion.article
@@ -132,8 +130,8 @@ export default function PostCard({ post, variant = "compact", isBookmarked, onTo
           dangerouslySetInnerHTML={{ __html: post.title.rendered }}
         />
         <div className="flex items-center gap-1.5 mt-1.5">
-          {author && (
-            <span className="text-[9px] text-muted-foreground font-medium truncate">{author.name}</span>
+          {authorName && (
+            <span className="text-[9px] text-muted-foreground font-medium truncate">{authorName}</span>
           )}
           <div className="ml-auto">
             <BookmarkButton />
@@ -159,10 +157,10 @@ export default function PostCard({ post, variant = "compact", isBookmarked, onTo
           />
         </div>
         <div className="flex items-center gap-2 mt-1.5">
-          {author && (
+          {authorName && (
             <>
               <span className="text-[10px] text-muted-foreground font-medium truncate max-w-[100px]">
-                {author.name}
+                {authorName}
               </span>
               <span className="text-muted-foreground/40 text-[8px]">·</span>
             </>
