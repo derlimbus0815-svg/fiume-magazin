@@ -3,6 +3,7 @@ const WP_BASE = "https://fiume-magazin.com/wp-json/wp/v2";
 export interface WPPost {
   id: number;
   date: string;
+  link: string;
   slug: string;
   title: { rendered: string };
   excerpt: { rendered: string };
