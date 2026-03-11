@@ -15,18 +15,7 @@ export default function ArticlePage() {
   const navigate = useNavigate();
   const { data: post, isLoading, error, refetch } = useWPPost(slug || "");
   const { isBookmarked, toggle } = useBookmarks();
-  const [authorName, setAuthorName] = useState<string | null>(null);
-
-  // Try to async-fetch the real author
-  useEffect(() => {
-    if (!post) return;
-    const syncAuthor = getPostAuthor(post);
-    setAuthorName(syncAuthor?.name || null);
-
-    fetchRealAuthor(post.slug).then((name) => {
-      if (name) setAuthorName(name);
-    });
-  }, [post]);
+  const authorName = useResolvedAuthor(post);
 
   if (isLoading) return <LoadingSpinner />;
   if (error || !post) return <ErrorScreen message="Artikel nicht gefunden." onRetry={() => refetch()} />;
