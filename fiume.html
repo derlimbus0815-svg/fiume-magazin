@@ -1259,6 +1259,9 @@ async function loadHome() {
     const recentEl = document.getElementById('recentPosts');
     recentEl.innerHTML = posts.slice(1, 10).map(p => compactCardHTML(p)).join('');
 
+    // Abo teaser
+    document.getElementById('homeAboTeaser').innerHTML = aboTeaserHTML();
+
     // Social footer
     document.getElementById('homeSocialFooter').innerHTML = socialFooterHTML();
 
