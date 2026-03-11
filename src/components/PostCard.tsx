@@ -5,7 +5,7 @@ import { type WPPost, getPostImage, getPostCategories, getPostAuthor, stripHtml,
 
 interface PostCardProps {
   post: WPPost;
-  variant?: "hero" | "compact";
+  variant?: "hero" | "compact" | "grid";
   isBookmarked?: boolean;
   onToggleBookmark?: (id: number) => void;
 }
