@@ -1168,11 +1168,16 @@ function compactCardHTML(post) {
         <h3 class="compact-title">${post.title.rendered}</h3>
       </div>
       <div class="compact-meta">
-        ${author ? `<span class="compact-author">${esc(author.name)}</span><span class="compact-dot">·</span>` : ''}
-        <time class="compact-date">${formatDate(post.date)}</time>
-        <button class="bookmark-btn ${bm ? 'bookmarked' : ''}" onclick="event.stopPropagation();bmToggle(${post.id},this)" aria-label="Lesezeichen">
-          ${bm ? BOOKMARK_CHECK_ICON : BOOKMARK_ICON}
-        </button>
+        <div class="compact-meta-left">
+          ${author ? `<span class="compact-author">${esc(author.name)}</span><span class="compact-dot">·</span>` : ''}
+          <time class="compact-date">${formatDate(post.date)}</time>
+        </div>
+        <div class="card-actions">
+          ${cardShareBtn(slug, stripHtml(post.title.rendered))}
+          <button class="bookmark-btn ${bm ? 'bookmarked' : ''}" onclick="event.stopPropagation();bmToggle(${post.id},this)" aria-label="Lesezeichen">
+            ${bm ? BOOKMARK_CHECK_ICON : BOOKMARK_ICON}
+          </button>
+        </div>
       </div>
     </div>
     ${img ? `<div class="compact-img-wrap"><img src="${escAttr(img)}" alt="" loading="lazy" /></div>` : ''}
