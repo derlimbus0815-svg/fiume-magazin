@@ -1143,9 +1143,12 @@ function heroCardHTML(post) {
           ${author ? `<span style="font-size:0.75rem;color:var(--muted-fg);">${esc(author.name)}</span>` : ''}
           <time style="font-size:0.75rem;color:var(--muted-fg);">${formatDate(post.date)}</time>
         </div>
-        <button class="bookmark-btn ${bm ? 'bookmarked' : ''}" onclick="event.stopPropagation();bmToggle(${post.id},this)" aria-label="Lesezeichen">
-          ${bm ? BOOKMARK_CHECK_ICON : BOOKMARK_ICON}
-        </button>
+        <div class="card-actions">
+          ${cardShareBtn(slug, stripHtml(post.title.rendered))}
+          <button class="bookmark-btn ${bm ? 'bookmarked' : ''}" onclick="event.stopPropagation();bmToggle(${post.id},this)" aria-label="Lesezeichen">
+            ${bm ? BOOKMARK_CHECK_ICON : BOOKMARK_ICON}
+          </button>
+        </div>
       </div>
     </div>
   </article>`;
