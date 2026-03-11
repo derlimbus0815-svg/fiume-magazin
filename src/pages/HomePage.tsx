@@ -8,6 +8,8 @@ import NewsletterSection from "@/components/NewsletterSection";
 import AboTeaser from "@/components/AboTeaser";
 import { useNavigate } from "react-router-dom";
 import { useRef, useEffect, useCallback, useMemo } from "react";
+import { Sun, Moon } from "lucide-react";
+import { useDarkMode } from "@/hooks/use-dark-mode";
 import type { WPPost } from "@/lib/wp-api";
 
 const FEATURED_CATEGORIES = ["politik", "feuilleton", "belletristik", "themen"];
