@@ -1,8 +1,9 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Share2 } from "lucide-react";
+import { ArrowLeft, Share2, Bookmark, BookmarkCheck } from "lucide-react";
 import { motion } from "framer-motion";
 import { useWPPost } from "@/hooks/use-wp-posts";
-import { getPostImage, getPostCategories, formatDate } from "@/lib/wp-api";
+import { getPostImage, getPostCategories, getPostAuthor, formatDate } from "@/lib/wp-api";
+import { useBookmarks } from "@/hooks/use-bookmarks";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorScreen from "@/components/ErrorScreen";
 import SocialFooter from "@/components/SocialFooter";
@@ -11,12 +12,15 @@ export default function ArticlePage() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { data: post, isLoading, error, refetch } = useWPPost(slug || "");
+  const { isBookmarked, toggle } = useBookmarks();
 
   if (isLoading) return <LoadingSpinner />;
   if (error || !post) return <ErrorScreen message="Artikel nicht gefunden." onRetry={() => refetch()} />;
 
   const image = getPostImage(post);
   const categories = getPostCategories(post);
+  const author = getPostAuthor(post);
+  const bookmarked = isBookmarked(post.id);
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -36,9 +40,18 @@ export default function ArticlePage() {
             <ArrowLeft size={22} />
           </button>
           <span className="fiume-heading text-sm">FIUME</span>
-          <button onClick={handleShare} className="fiume-touch-target">
-            <Share2 size={20} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => toggle(post.id)}
+              className="fiume-touch-target"
+              aria-label={bookmarked ? "Lesezeichen entfernen" : "Lesezeichen hinzufügen"}
+            >
+              {bookmarked ? <BookmarkCheck size={20} className="text-accent" /> : <Bookmark size={20} />}
+            </button>
+            <button onClick={handleShare} className="fiume-touch-target">
+              <Share2 size={20} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -55,20 +68,35 @@ export default function ArticlePage() {
           />
         )}
 
-        <div className="px-5 py-6">
+        <div className="px-4 sm:px-5 py-5 sm:py-6">
           {categories[0] && <span className="fiume-category">{categories[0].name}</span>}
 
           <h1
-            className="font-serif text-3xl font-bold leading-tight mt-2"
+            className="font-serif text-2xl sm:text-3xl font-bold leading-tight mt-2"
             dangerouslySetInnerHTML={{ __html: post.title.rendered }}
           />
 
-          <time className="text-xs text-muted-foreground mt-3 block tracking-wide uppercase">
-            {formatDate(post.date)}
-          </time>
+          {/* Author & date row */}
+          <div className="flex items-center gap-3 mt-4 pb-4 border-b border-border">
+            {author && (
+              <div className="flex items-center gap-2">
+                {author.avatar && (
+                  <img
+                    src={author.avatar}
+                    alt={author.name}
+                    className="w-8 h-8 rounded-full object-cover border border-border"
+                  />
+                )}
+                <span className="text-sm font-medium">{author.name}</span>
+              </div>
+            )}
+            <time className="text-xs text-muted-foreground tracking-wide uppercase ml-auto">
+              {formatDate(post.date)}
+            </time>
+          </div>
 
           <div
-            className="fiume-article-body mt-8"
+            className="fiume-article-body mt-6"
             dangerouslySetInnerHTML={{ __html: post.content.rendered }}
           />
         </div>
