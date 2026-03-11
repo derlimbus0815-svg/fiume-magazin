@@ -1209,9 +1209,9 @@ function toggleCurrentBookmark() {
 }
 
 function shareArticle() {
-  if (navigator.share) {
-    navigator.share({ title: document.title, url: window.location.href }).catch(() => {});
-  }
+  if (!currentArticleSlug) return;
+  handleShare(document.title, currentArticleSlug);
+}
 }
 
 // ── Escape helpers ─────────────────────────────
