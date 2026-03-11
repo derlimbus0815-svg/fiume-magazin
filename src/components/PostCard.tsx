@@ -107,6 +107,42 @@ export default function PostCard({ post, variant = "compact", isBookmarked, onTo
     );
   }
 
+  // Grid variant – vertical card for 2-column layout
+  if (variant === "grid") {
+    return (
+      <motion.article
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="cursor-pointer group"
+        onClick={() => navigate(`/artikel/${post.slug}`)}
+      >
+        {image && (
+          <div className="aspect-[4/3] overflow-hidden rounded-sm mb-2">
+            <img
+              src={image}
+              alt={stripHtml(post.title.rendered)}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              loading="lazy"
+            />
+          </div>
+        )}
+        {categories[0] && <span className="fiume-category text-[9px]">{categories[0].name}</span>}
+        <h3
+          className="font-serif text-sm font-semibold mt-0.5 leading-snug line-clamp-3"
+          dangerouslySetInnerHTML={{ __html: post.title.rendered }}
+        />
+        <div className="flex items-center gap-1.5 mt-1.5">
+          {author && (
+            <span className="text-[9px] text-muted-foreground font-medium truncate">{author.name}</span>
+          )}
+          <div className="ml-auto">
+            <BookmarkButton />
+          </div>
+        </div>
+      </motion.article>
+    );
+  }
+
   return (
     <motion.article
       initial={{ opacity: 0, y: 8 }}
