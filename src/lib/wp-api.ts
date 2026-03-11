@@ -113,13 +113,74 @@ export function getPostCategories(post: WPPost): Array<{ id: number; name: strin
   return post._embedded?.["wp:term"]?.[0] || [];
 }
 
+// Static author map: slug → real author name
+const AUTHOR_MAP: Record<string, string> = {
+  "what-do-you-do-sir": "Yotam Givoli",
+  "das-amitabha-sutra": "Sebastian Schwaerzel",
+  "exkulpation-gottlos": "Ledio Albani",
+  "sie-haeuten-die-menschen": "Roland R. Maxwell",
+  "codex-hammurabi-stempel-schuld-und-stein": "Daniel Yakubovich",
+  "die-agonie-der-neuen-rechten": "Jörg Rüdiger Mayer",
+  "plain-and-colored": "Gaurav Monga",
+  "gerechtigkeit-fuer-serbien": "Filip Gašpar",
+  "kristina-ballova-im-interview": "Kristina Ballova",
+  "don-juan-in-der-unterwelt": "Ledio Albani",
+  "ex-serbien": "Günther Fehlinger-Jahn",
+  "stumme-freundin": "Adorján Kovács",
+  "kinderzauber": "Philipp von Goenitzer",
+  "aldous-huxleys-zukunftsschau": "Roman Raskolnikow",
+  "wiener-ballfuehrer": "Redaktion",
+  "dichtungen-der-maler-und-bildner": "Redaktion",
+  "fuck": "His excellence Fungus Kaiser Babba Zabba",
+  "epiphyten": "Barbara Steemann",
+  "das-gluecksversprechen": "Moritz Ostertag",
+  "das-stachelschwein-dilemma": "Noel Vinzentz",
+};
+
 export function getPostAuthor(post: WPPost): { name: string; avatar?: string } | null {
+  // 1. Check static map by slug
+  const mapped = AUTHOR_MAP[post.slug];
+  if (mapped) return { name: mapped };
+
+  // 2. Check localStorage cache
+  try {
+    const cached = localStorage.getItem(`fiume_author_${post.slug}`);
+    if (cached) return { name: cached };
+  } catch {}
+
+  // 3. Fallback to WP API author (the publisher account)
   const author = post._embedded?.author?.[0];
   if (!author) return null;
-  return {
-    name: author.name,
-    avatar: author.avatar_urls?.["96"] || author.avatar_urls?.["48"],
-  };
+  return { name: author.name };
+}
+
+// Async fetch of the real author from the rendered article page
+export async function fetchRealAuthor(slug: string): Promise<string | null> {
+  // Already in map
+  if (AUTHOR_MAP[slug]) return AUTHOR_MAP[slug];
+
+  // Check cache
+  try {
+    const cached = localStorage.getItem(`fiume_author_${slug}`);
+    if (cached) return cached;
+  } catch {}
+
+  try {
+    const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://fiume-magazin.com/${slug}/`)}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const html = await res.text();
+
+    // Parse "Von [Name]" from Elementor custom field
+    const match = html.match(/elementor-post-info__item--type-custom[^>]*>[\s]*Von\s+([^<]+)/i);
+    if (match?.[1]) {
+      const name = match[1].trim();
+      try { localStorage.setItem(`fiume_author_${slug}`, name); } catch {}
+      return name;
+    }
+  } catch {}
+
+  return null;
 }
 
 export function stripHtml(html: string): string {
