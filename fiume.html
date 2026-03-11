@@ -257,24 +257,36 @@
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
-    .compact-meta { display: flex; align-items: center; gap: 0.5rem; margin-top: 6px; }
+    .compact-meta { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: 6px; }
+    .compact-meta-left { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
     .compact-author { font-size: 0.625rem; color: var(--muted-fg); font-weight: 500; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .compact-dot { font-size: 0.5rem; color: color-mix(in srgb, var(--muted-fg) 40%, transparent); }
     .compact-date { font-size: 0.625rem; color: var(--muted-fg); letter-spacing: 0.1em; text-transform: uppercase; }
     .compact-img-wrap { width: 5rem; height: 5rem; flex-shrink: 0; overflow: hidden; border-radius: var(--radius); }
     .compact-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
 
-    /* ── Bookmark button ── */
-    .bookmark-btn {
+    /* ── Bookmark & Share buttons ── */
+    .card-actions { display: flex; align-items: center; gap: 2px; margin-left: auto; }
+    .bookmark-btn, .share-btn {
       min-width: 36px; min-height: 36px;
       display: flex; align-items: center; justify-content: center;
       border-radius: 50%;
       transition: background 0.15s;
-      margin-left: auto;
     }
-    .bookmark-btn:hover { background: var(--secondary); }
-    .bookmark-btn svg { color: var(--muted-fg); }
+    .bookmark-btn:hover, .share-btn:hover { background: var(--secondary); }
+    .bookmark-btn svg, .share-btn svg { color: var(--muted-fg); }
     .bookmark-btn.bookmarked svg { color: var(--accent); }
+
+    /* ── Toast notification ── */
+    .toast-msg {
+      position: fixed; bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%);
+      background: var(--fg); color: var(--bg);
+      padding: 0.5rem 1.25rem; border-radius: var(--radius);
+      font-size: 0.875rem; font-weight: 500;
+      z-index: 100; opacity: 0; transition: opacity 0.3s;
+      pointer-events: none;
+    }
+    .toast-msg.show { opacity: 1; }
 
     /* ── Section heading ── */
     .section-heading {
@@ -586,6 +598,7 @@
       <h2 class="section-heading">Neueste Artikel</h2>
       <div id="recentPosts"></div>
     </section>
+    <div id="homeAboTeaser"></div>
     <div id="homeSocialFooter"></div>
   </div>
 
@@ -758,6 +771,9 @@
     </div>
   </div>
 
+  <!-- Toast element -->
+  <div class="toast-msg" id="toastMsg"></div>
+
 </div><!-- /#app -->
 
 <script>
@@ -835,10 +851,103 @@ function getPostImage(post) {
 function getPostCats(post) {
   return post._embedded?.['wp:term']?.[0] || [];
 }
+// ── Author resolution ──────────────────────────
+const AUTHOR_MAP = {
+  "what-do-you-do-sir": "Yotam Givoli",
+  "das-amitabha-sutra": "Sebastian Schwaerzel",
+  "exkulpation-gottlos": "Ledio Albani",
+  "sie-haeuten-die-menschen": "Roland R. Maxwell",
+  "codex-hammurabi-stempel-schuld-und-stein": "Daniel Yakubovich",
+  "die-agonie-der-neuen-rechten": "Jörg Rüdiger Mayer",
+  "plain-and-colored": "Gaurav Monga",
+  "gerechtigkeit-fuer-serbien": "Filip Gašpar",
+  "kristina-ballova-im-interview": "Kristina Ballova",
+  "don-juan-in-der-unterwelt": "Ledio Albani",
+  "ex-serbien": "Günther Fehlinger-Jahn",
+  "stumme-freundin": "Adorján Kovács",
+  "kinderzauber": "Philipp von Goenitzer",
+  "aldous-huxleys-zukunftsschau": "Roman Raskolnikow",
+  "wiener-ballfuehrer": "Redaktion",
+  "dichtungen-der-maler-und-bildner": "Redaktion",
+  "fuck": "His excellence Fungus Kaiser Babba Zabba",
+  "epiphyten": "Barbara Steemann",
+  "das-gluecksversprechen": "Moritz Ostertag",
+  "das-stachelschwein-dilemma": "Noel Vinzentz",
+};
+
+const CORS_PROXIES = [
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+];
+const authorFetchCache = new Map();
+
 function getPostAuthor(post) {
+  // 1. Static map
+  if (AUTHOR_MAP[post.slug]) return { name: AUTHOR_MAP[post.slug] };
+  // 2. localStorage
+  try {
+    const cached = localStorage.getItem('fiume_author_' + post.slug);
+    if (cached) return { name: cached };
+  } catch {}
+  // 3. WP API fallback
   const a = post._embedded?.author?.[0];
   if (!a) return null;
   return { name: a.name, avatar: a.avatar_urls?.['96'] || a.avatar_urls?.['48'] };
+}
+
+async function resolveAuthorAsync(post) {
+  if (AUTHOR_MAP[post.slug]) return AUTHOR_MAP[post.slug];
+  try {
+    const cached = localStorage.getItem('fiume_author_' + post.slug);
+    if (cached) return cached;
+  } catch {}
+  if (!post.link) return null;
+  if (authorFetchCache.has(post.slug)) return authorFetchCache.get(post.slug);
+  const promise = fetchAuthorFromWeb(post.slug, post.link);
+  authorFetchCache.set(post.slug, promise);
+  try { return await promise; } finally {
+    setTimeout(() => authorFetchCache.delete(post.slug), 60000);
+  }
+}
+
+async function fetchWithProxyChain(url) {
+  for (const makeProxy of CORS_PROXIES) {
+    try {
+      const res = await fetch(makeProxy(url));
+      if (res.ok) return await res.text();
+    } catch {}
+  }
+  return null;
+}
+
+function extractAuthorFromHtml(html) {
+  const patterns = [
+    /elementor-post-info__item--type-custom[^>]*>[\s]*Von\s+([^<]+)/i,
+    />Von\s+([^<]{2,60})</i,
+    /class="[^"]*author[^"]*"[^>]*>[\s]*Von\s+([^<]+)/i,
+  ];
+  for (const p of patterns) {
+    const m = html.match(p);
+    if (m?.[1]) { const n = m[1].trim(); if (n && n !== 'admin' && n.length > 1) return n; }
+  }
+  return null;
+}
+
+async function fetchAuthorFromWeb(slug, link, retry = true) {
+  const html = await fetchWithProxyChain(link);
+  if (html) {
+    const name = extractAuthorFromHtml(html);
+    if (name) {
+      try { localStorage.setItem('fiume_author_' + slug, name); } catch {}
+      return name;
+    }
+  }
+  if (retry) {
+    await new Promise(r => setTimeout(r, 5000));
+    return fetchAuthorFromWeb(slug, link, false);
+  }
+  return null;
 }
 function stripHtml(html) {
   const d = document.createElement('div');
@@ -953,6 +1062,42 @@ document.getElementById('artikelBack').addEventListener('click', () => {
 // ── SVG Icons ──────────────────────────────────
 const BOOKMARK_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
 const BOOKMARK_CHECK_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><polyline points="9 11 12 14 22 4"/></svg>`;
+const SHARE_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>`;
+
+// ── Toast ──────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toastMsg');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ── Share helper ───────────────────────────────
+async function handleShare(title, slug) {
+  const url = window.location.origin + '/artikel/' + slug;
+  if (navigator.share) {
+    try { await navigator.share({ title, url }); return; } catch {}
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = url;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+  showToast('Link kopiert');
+}
+
+function cardShareBtn(slug, title) {
+  return `<button class="share-btn" onclick="event.stopPropagation();handleShare('${escAttr(title)}','${escAttr(slug)}')" aria-label="Teilen">${SHARE_ICON}</button>`;
+}
 
 // ── HTML generators ────────────────────────────
 function heroCardHTML(post) {
@@ -977,9 +1122,12 @@ function heroCardHTML(post) {
               ${author ? `<span class="hero-author">${esc(author.name)}</span><span class="hero-dot">·</span>` : ''}
               <time class="hero-date">${formatDate(post.date)}</time>
             </div>
-            <button class="bookmark-btn ${bm ? 'bookmarked' : ''}" onclick="event.stopPropagation();bmToggle(${post.id},this)" aria-label="Lesezeichen">
-              ${bm ? BOOKMARK_CHECK_ICON : BOOKMARK_ICON}
-            </button>
+            <div class="card-actions">
+              ${cardShareBtn(slug, stripHtml(post.title.rendered))}
+              <button class="bookmark-btn ${bm ? 'bookmarked' : ''}" onclick="event.stopPropagation();bmToggle(${post.id},this)" aria-label="Lesezeichen">
+                ${bm ? BOOKMARK_CHECK_ICON : BOOKMARK_ICON}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -996,9 +1144,12 @@ function heroCardHTML(post) {
           ${author ? `<span style="font-size:0.75rem;color:var(--muted-fg);">${esc(author.name)}</span>` : ''}
           <time style="font-size:0.75rem;color:var(--muted-fg);">${formatDate(post.date)}</time>
         </div>
-        <button class="bookmark-btn ${bm ? 'bookmarked' : ''}" onclick="event.stopPropagation();bmToggle(${post.id},this)" aria-label="Lesezeichen">
-          ${bm ? BOOKMARK_CHECK_ICON : BOOKMARK_ICON}
-        </button>
+        <div class="card-actions">
+          ${cardShareBtn(slug, stripHtml(post.title.rendered))}
+          <button class="bookmark-btn ${bm ? 'bookmarked' : ''}" onclick="event.stopPropagation();bmToggle(${post.id},this)" aria-label="Lesezeichen">
+            ${bm ? BOOKMARK_CHECK_ICON : BOOKMARK_ICON}
+          </button>
+        </div>
       </div>
     </div>
   </article>`;
@@ -1018,11 +1169,16 @@ function compactCardHTML(post) {
         <h3 class="compact-title">${post.title.rendered}</h3>
       </div>
       <div class="compact-meta">
-        ${author ? `<span class="compact-author">${esc(author.name)}</span><span class="compact-dot">·</span>` : ''}
-        <time class="compact-date">${formatDate(post.date)}</time>
-        <button class="bookmark-btn ${bm ? 'bookmarked' : ''}" onclick="event.stopPropagation();bmToggle(${post.id},this)" aria-label="Lesezeichen">
-          ${bm ? BOOKMARK_CHECK_ICON : BOOKMARK_ICON}
-        </button>
+        <div class="compact-meta-left">
+          ${author ? `<span class="compact-author">${esc(author.name)}</span><span class="compact-dot">·</span>` : ''}
+          <time class="compact-date">${formatDate(post.date)}</time>
+        </div>
+        <div class="card-actions">
+          ${cardShareBtn(slug, stripHtml(post.title.rendered))}
+          <button class="bookmark-btn ${bm ? 'bookmarked' : ''}" onclick="event.stopPropagation();bmToggle(${post.id},this)" aria-label="Lesezeichen">
+            ${bm ? BOOKMARK_CHECK_ICON : BOOKMARK_ICON}
+          </button>
+        </div>
       </div>
     </div>
     ${img ? `<div class="compact-img-wrap"><img src="${escAttr(img)}" alt="" loading="lazy" /></div>` : ''}
@@ -1054,9 +1210,9 @@ function toggleCurrentBookmark() {
 }
 
 function shareArticle() {
-  if (navigator.share) {
-    navigator.share({ title: document.title, url: window.location.href }).catch(() => {});
-  }
+  if (!currentArticleSlug) return;
+  handleShare(document.title, currentArticleSlug);
+}
 }
 
 // ── Escape helpers ─────────────────────────────
@@ -1102,6 +1258,9 @@ async function loadHome() {
     // Recent
     const recentEl = document.getElementById('recentPosts');
     recentEl.innerHTML = posts.slice(1, 10).map(p => compactCardHTML(p)).join('');
+
+    // Abo teaser
+    document.getElementById('homeAboTeaser').innerHTML = aboTeaserHTML();
 
     // Social footer
     document.getElementById('homeSocialFooter').innerHTML = socialFooterHTML();
@@ -1285,6 +1444,18 @@ function fallbackStaticContent(slug) {
       <p>Weitere Informationen unter <a href="https://fiume-magazin.com/datenschutz" target="_blank" rel="noopener">fiume-magazin.com</a></p>
     </div>`;
   return `<p>Inhalt konnte nicht geladen werden.</p>`;
+}
+
+// ── ABO TEASER ─────────────────────────────────
+function aboTeaserHTML() {
+  return `<section style="margin:1.5rem 0.75rem;border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;background:color-mix(in srgb, var(--secondary) 30%, transparent);">
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>
+      <h3 style="font-family:var(--font-serif);font-size:1rem;font-weight:600;">FIUME Print abonnieren</h3>
+    </div>
+    <p style="font-size:0.8125rem;color:var(--muted-fg);line-height:1.5;margin-bottom:1rem;">Mit einem Abonnement der FIUME-Printausgabe fördern Sie Kultur, Tradition und unabhängige Publizistik.</p>
+    <a href="#" onclick="event.preventDefault();" style="display:inline-flex;align-items:center;justify-content:center;height:2.5rem;padding:0 1.25rem;border-radius:var(--radius);background:var(--fg);color:var(--bg);font-size:0.8125rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;transition:opacity 0.15s;" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">Jetzt abonnieren</a>
+  </section>`;
 }
 
 // ── SOCIAL FOOTER ──────────────────────────────
