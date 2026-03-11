@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Share2, Bookmark, BookmarkCheck } from "lucide-react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 import { useWPPost } from "@/hooks/use-wp-posts";
 import { getPostImage, getPostCategories, formatDate } from "@/lib/wp-api";
