@@ -1,8 +1,9 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Share2, Bookmark, BookmarkCheck } from "lucide-react";
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 import { useWPPost } from "@/hooks/use-wp-posts";
-import { getPostImage, getPostCategories, getPostAuthor, formatDate } from "@/lib/wp-api";
+import { getPostImage, getPostCategories, getPostAuthor, fetchRealAuthor, formatDate } from "@/lib/wp-api";
 import { useBookmarks } from "@/hooks/use-bookmarks";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorScreen from "@/components/ErrorScreen";
@@ -13,13 +14,24 @@ export default function ArticlePage() {
   const navigate = useNavigate();
   const { data: post, isLoading, error, refetch } = useWPPost(slug || "");
   const { isBookmarked, toggle } = useBookmarks();
+  const [authorName, setAuthorName] = useState<string | null>(null);
+
+  // Try to async-fetch the real author
+  useEffect(() => {
+    if (!post) return;
+    const syncAuthor = getPostAuthor(post);
+    setAuthorName(syncAuthor?.name || null);
+
+    fetchRealAuthor(post.slug).then((name) => {
+      if (name) setAuthorName(name);
+    });
+  }, [post]);
 
   if (isLoading) return <LoadingSpinner />;
   if (error || !post) return <ErrorScreen message="Artikel nicht gefunden." onRetry={() => refetch()} />;
 
   const image = getPostImage(post);
   const categories = getPostCategories(post);
-  const author = getPostAuthor(post);
   const bookmarked = isBookmarked(post.id);
 
   const handleShare = async () => {
@@ -78,17 +90,8 @@ export default function ArticlePage() {
 
           {/* Author & date row */}
           <div className="flex items-center gap-3 mt-4 pb-4 border-b border-border">
-            {author && (
-              <div className="flex items-center gap-2">
-                {author.avatar && (
-                  <img
-                    src={author.avatar}
-                    alt={author.name}
-                    className="w-8 h-8 rounded-full object-cover border border-border"
-                  />
-                )}
-                <span className="text-sm font-medium">{author.name}</span>
-              </div>
+            {authorName && (
+              <span className="text-sm font-medium">{authorName}</span>
             )}
             <time className="text-xs text-muted-foreground tracking-wide uppercase ml-auto">
               {formatDate(post.date)}
