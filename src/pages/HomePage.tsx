@@ -81,11 +81,20 @@ export default function HomePage() {
   return (
     <div className="fiume-safe-bottom">
       {/* Header */}
-      <header className="py-5 sm:py-6 text-center border-b border-border">
-        <h1 className="fiume-heading text-3xl sm:text-4xl">FIUME</h1>
-        <p className="text-[10px] sm:text-xs text-muted-foreground tracking-[0.3em] mt-0.5 uppercase">
-          Magazin
-        </p>
+      <header className="py-5 sm:py-6 border-b border-border relative">
+        <div className="text-center">
+          <h1 className="fiume-heading text-3xl sm:text-4xl">FIUME</h1>
+          <p className="text-[10px] sm:text-xs text-muted-foreground tracking-[0.3em] mt-0.5 uppercase">
+            Magazin
+          </p>
+        </div>
+        <button
+          onClick={toggleTheme}
+          className="absolute right-4 top-1/2 -translate-y-1/2 fiume-touch-target p-2 rounded-full hover:bg-secondary transition-colors"
+          aria-label={isDark ? "Heller Modus" : "Dunkler Modus"}
+        >
+          {isDark ? <Sun size={18} /> : <Moon size={18} />}
+        </button>
       </header>
 
       {/* Category Pills */}
