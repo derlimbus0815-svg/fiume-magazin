@@ -114,7 +114,7 @@ export function getPostCategories(post: WPPost): Array<{ id: number; name: strin
 }
 
 // Static author map: slug → real author name
-const AUTHOR_MAP: Record<string, string> = {
+export const AUTHOR_MAP: Record<string, string> = {
   "what-do-you-do-sir": "Yotam Givoli",
   "das-amitabha-sutra": "Sebastian Schwaerzel",
   "exkulpation-gottlos": "Ledio Albani",
