@@ -1506,12 +1506,38 @@ function declineConsent() {
   document.getElementById('consentBanner').classList.add('hidden');
 }
 
+// ── FILE:// WARNING ────────────────────────────
+function showFileProtocolWarning() {
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const isFileProtocol = location.protocol === 'file:';
+  
+  if (isFileProtocol && isSafari) {
+    // Safari blocks ALL network requests from file://, show immediate warning
+    document.getElementById('heroSection').innerHTML = `
+      <div class="error-wrap" style="min-height:40vh;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <h2 style="font-family:var(--font-serif);font-size:1.25rem;font-weight:600;">Safari blockiert lokale Dateien</h2>
+        <p style="max-width:340px;">Safari erlaubt keine Netzwerkanfragen aus lokalen Dateien (<code>file://</code>). Bitte öffne diese Datei in <strong>Google Chrome</strong> oder nutze die gehostete Version.</p>
+        <div style="display:flex;flex-direction:column;gap:0.5rem;width:100%;max-width:280px;">
+          <a href="https://fiume-magazin.com" target="_blank" rel="noopener" class="retry-btn" style="text-align:center;text-decoration:none;">Zur Website →</a>
+        </div>
+      </div>`;
+    return true;
+  }
+  return false;
+}
+
 // ── INIT ───────────────────────────────────────
 function init() {
   initDarkMode();
   initSearch();
   initConsent();
   updateBookmarkCount();
+
+  // Check for file:// + Safari first
+  if (showFileProtocolWarning()) return;
 
   // Load initial pages lazily
   loadHome();
