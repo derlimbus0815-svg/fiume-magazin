@@ -34,7 +34,7 @@ const App = () => (
     <TooltipProvider>
       <Sonner />
       <DarkModeInit />
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <div className="max-w-lg mx-auto min-h-screen relative">
           <Routes>
             <Route path="/" element={<HomePage />} />
