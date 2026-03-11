@@ -1,0 +1,17 @@
+{
+  "name": "FIUME Magazin",
+  "short_name": "FIUME",
+  "description": "Literatur, Poesie, Politik, Feuilleton und mehr.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#e8e3dc",
+  "theme_color": "#e8e3dc",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}
