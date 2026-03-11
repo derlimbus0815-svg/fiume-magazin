@@ -850,10 +850,103 @@ function getPostImage(post) {
 function getPostCats(post) {
   return post._embedded?.['wp:term']?.[0] || [];
 }
+// ── Author resolution ──────────────────────────
+const AUTHOR_MAP = {
+  "what-do-you-do-sir": "Yotam Givoli",
+  "das-amitabha-sutra": "Sebastian Schwaerzel",
+  "exkulpation-gottlos": "Ledio Albani",
+  "sie-haeuten-die-menschen": "Roland R. Maxwell",
+  "codex-hammurabi-stempel-schuld-und-stein": "Daniel Yakubovich",
+  "die-agonie-der-neuen-rechten": "Jörg Rüdiger Mayer",
+  "plain-and-colored": "Gaurav Monga",
+  "gerechtigkeit-fuer-serbien": "Filip Gašpar",
+  "kristina-ballova-im-interview": "Kristina Ballova",
+  "don-juan-in-der-unterwelt": "Ledio Albani",
+  "ex-serbien": "Günther Fehlinger-Jahn",
+  "stumme-freundin": "Adorján Kovács",
+  "kinderzauber": "Philipp von Goenitzer",
+  "aldous-huxleys-zukunftsschau": "Roman Raskolnikow",
+  "wiener-ballfuehrer": "Redaktion",
+  "dichtungen-der-maler-und-bildner": "Redaktion",
+  "fuck": "His excellence Fungus Kaiser Babba Zabba",
+  "epiphyten": "Barbara Steemann",
+  "das-gluecksversprechen": "Moritz Ostertag",
+  "das-stachelschwein-dilemma": "Noel Vinzentz",
+};
+
+const CORS_PROXIES = [
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+];
+const authorFetchCache = new Map();
+
 function getPostAuthor(post) {
+  // 1. Static map
+  if (AUTHOR_MAP[post.slug]) return { name: AUTHOR_MAP[post.slug] };
+  // 2. localStorage
+  try {
+    const cached = localStorage.getItem('fiume_author_' + post.slug);
+    if (cached) return { name: cached };
+  } catch {}
+  // 3. WP API fallback
   const a = post._embedded?.author?.[0];
   if (!a) return null;
   return { name: a.name, avatar: a.avatar_urls?.['96'] || a.avatar_urls?.['48'] };
+}
+
+async function resolveAuthorAsync(post) {
+  if (AUTHOR_MAP[post.slug]) return AUTHOR_MAP[post.slug];
+  try {
+    const cached = localStorage.getItem('fiume_author_' + post.slug);
+    if (cached) return cached;
+  } catch {}
+  if (!post.link) return null;
+  if (authorFetchCache.has(post.slug)) return authorFetchCache.get(post.slug);
+  const promise = fetchAuthorFromWeb(post.slug, post.link);
+  authorFetchCache.set(post.slug, promise);
+  try { return await promise; } finally {
+    setTimeout(() => authorFetchCache.delete(post.slug), 60000);
+  }
+}
+
+async function fetchWithProxyChain(url) {
+  for (const makeProxy of CORS_PROXIES) {
+    try {
+      const res = await fetch(makeProxy(url));
+      if (res.ok) return await res.text();
+    } catch {}
+  }
+  return null;
+}
+
+function extractAuthorFromHtml(html) {
+  const patterns = [
+    /elementor-post-info__item--type-custom[^>]*>[\s]*Von\s+([^<]+)/i,
+    />Von\s+([^<]{2,60})</i,
+    /class="[^"]*author[^"]*"[^>]*>[\s]*Von\s+([^<]+)/i,
+  ];
+  for (const p of patterns) {
+    const m = html.match(p);
+    if (m?.[1]) { const n = m[1].trim(); if (n && n !== 'admin' && n.length > 1) return n; }
+  }
+  return null;
+}
+
+async function fetchAuthorFromWeb(slug, link, retry = true) {
+  const html = await fetchWithProxyChain(link);
+  if (html) {
+    const name = extractAuthorFromHtml(html);
+    if (name) {
+      try { localStorage.setItem('fiume_author_' + slug, name); } catch {}
+      return name;
+    }
+  }
+  if (retry) {
+    await new Promise(r => setTimeout(r, 5000));
+    return fetchAuthorFromWeb(slug, link, false);
+  }
+  return null;
 }
 function stripHtml(html) {
   const d = document.createElement('div');
