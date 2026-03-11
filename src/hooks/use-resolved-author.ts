@@ -1,21 +1,27 @@
 import { useState, useEffect } from "react";
-import { type WPPost, resolveAuthor } from "@/lib/wp-api";
+import { type WPPost, AUTHOR_MAP, resolveAuthor } from "@/lib/wp-api";
+
+function getCachedAuthor(slug: string): string | null {
+  if (AUTHOR_MAP[slug]) return AUTHOR_MAP[slug];
+  try {
+    const cached = localStorage.getItem(`fiume_author_${slug}`);
+    if (cached) return cached;
+  } catch {}
+  return null;
+}
 
 /**
- * Hook that asynchronously resolves the real author name for a post.
- * Shows nothing until resolved (avoids showing wrong publisher names).
+ * Async-resolves the real author for a post.
+ * Shows nothing until resolved to avoid flashing wrong names.
  */
 export function useResolvedAuthor(post: WPPost | null | undefined): string | null {
-  const [name, setName] = useState<string | null>(() => {
-    if (!post) return null;
-    // Immediately return from static map or localStorage cache
-    return getCachedAuthor(post.slug);
-  });
+  const [name, setName] = useState<string | null>(() =>
+    post ? getCachedAuthor(post.slug) : null
+  );
 
   useEffect(() => {
     if (!post) return;
 
-    // If we already have it synchronously, we're done
     const cached = getCachedAuthor(post.slug);
     if (cached) {
       setName(cached);
@@ -30,18 +36,4 @@ export function useResolvedAuthor(post: WPPost | null | undefined): string | nul
   }, [post?.slug]);
 
   return name;
-}
-
-function getCachedAuthor(slug: string): string | null {
-  // Check static map
-  const { AUTHOR_MAP } = require("@/lib/wp-api");
-  if (AUTHOR_MAP[slug]) return AUTHOR_MAP[slug];
-
-  // Check localStorage
-  try {
-    const cached = localStorage.getItem(`fiume_author_${slug}`);
-    if (cached) return cached;
-  } catch {}
-
-  return null;
 }
