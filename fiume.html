@@ -807,13 +807,24 @@ function getCached(key) {
 function setCache(key, data) {
   try { localStorage.setItem('fiume_cache_' + key, JSON.stringify({ data, ts: Date.now() })); } catch {}
 }
+const IS_LOCAL = location.protocol === 'file:'
+  || !['fiume-magazin.com','lovable.app','lovableproject.com']
+      .some(h => location.hostname.includes(h));
 
 async function wpFetch(endpoint, cacheKey) {
   const cached = getCached(cacheKey);
   if (cached) return cached;
-  const res = await fetch(WP_BASE + endpoint);
-  if (!res.ok) throw new Error('WP API Fehler: ' + res.status);
-  const data = await res.json();
+  const url = WP_BASE + endpoint;
+  let data;
+  if (IS_LOCAL) {
+    const text = await fetchWithProxyChain(url);
+    if (!text) throw new Error('API nicht erreichbar – alle Proxies fehlgeschlagen');
+    data = JSON.parse(text);
+  } else {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('WP API Fehler: ' + res.status);
+    data = await res.json();
+  }
   setCache(cacheKey, data);
   return data;
 }
