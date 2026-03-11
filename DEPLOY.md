@@ -1,35 +1,34 @@
 # FIUME Magazin – GitHub Pages Deployment
 
-## Schnellanleitung
+## Automatisches Deployment (empfohlen)
 
-### 1. Neues GitHub-Repository erstellen
-- Gehe zu [github.com/new](https://github.com/new)
-- Repository-Name: z.B. `fiume-app`
-- Sichtbarkeit: **Public** (für kostenlose GitHub Pages)
-- Klicke auf **Create repository**
+Die App wird bei jedem Push automatisch auf GitHub Pages gebaut und veröffentlicht – identisch zur Lovable-Version.
 
-### 2. Datei hochladen
-- Klicke auf **uploading an existing file**
-- Lade die Datei `fiume.html` hoch
-- **Wichtig:** Benenne sie in `index.html` um (entweder vorher lokal oder nach dem Upload über GitHub)
-- Klicke auf **Commit changes**
+### 1. GitHub verbinden
 
-### 3. GitHub Pages aktivieren
-- Gehe zu **Settings** → **Pages** (linkes Menü)
-- Unter **Source** wähle: **Deploy from a branch**
-- Branch: **main** / Ordner: **/ (root)**
-- Klicke auf **Save**
+1. Öffne dein Lovable-Projekt
+2. Gehe zu **Settings** → **GitHub** → **Connect project**
+3. Autorisiere die Lovable GitHub App
+4. Klicke auf **Create Repository**
 
-### 4. Fertig! 🎉
-Nach ca. 1–2 Minuten ist deine App erreichbar unter:
+### 2. GitHub Pages aktivieren
+
+1. Gehe zu deinem neuen Repository auf GitHub
+2. **Settings** → **Pages** (linkes Menü)
+3. Unter **Source** wähle: **GitHub Actions**
+4. Klicke auf **Save**
+
+### 3. Fertig! 🎉
+
+Nach dem nächsten Push (oder manuell über **Actions** → **Run workflow**) ist deine App erreichbar unter:
 
 ```
-https://DEIN-USERNAME.github.io/fiume-app/
+https://DEIN-USERNAME.github.io/REPO-NAME/
 ```
 
 ## Hinweise
 
-- Die App lädt alle Artikel live von der WordPress-API (`fiume-magazin.com`)
-- Alle API-Anfragen laufen über CORS-Proxies (allorigins, corsproxy, codetabs)
-- Dark Mode, Lesezeichen und Einstellungen werden lokal im Browser gespeichert
-- Die Datei funktioniert auch lokal in **Google Chrome** (nicht in Safari wegen Sicherheitseinschränkungen)
+- Jede Änderung in Lovable wird automatisch nach GitHub gepusht und neu gebaut
+- Die GitHub-Pages-Version ist **identisch** zur Lovable-Version
+- Funktioniert auf allen Geräten (Handy, Desktop) über HTTPS
+- Die standalone `fiume.html` wird nicht mehr benötigt
