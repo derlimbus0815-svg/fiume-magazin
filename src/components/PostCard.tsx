@@ -1,8 +1,9 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Bookmark, BookmarkCheck } from "lucide-react";
+import { Bookmark, BookmarkCheck, Share2 } from "lucide-react";
 import { type WPPost, getPostImage, getPostCategories, stripHtml, formatDate } from "@/lib/wp-api";
 import { useResolvedAuthor } from "@/hooks/use-resolved-author";
+import { toast } from "sonner";
 
 interface PostCardProps {
   post: WPPost;
@@ -17,6 +18,18 @@ export default function PostCard({ post, variant = "compact", isBookmarked, onTo
   const categories = getPostCategories(post);
   const authorName = useResolvedAuthor(post);
   const excerpt = stripHtml(post.excerpt.rendered).slice(0, 120);
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const shareUrl = `${window.location.origin}/artikel/${post.slug}`;
+    const shareTitle = stripHtml(post.title.rendered);
+    if (navigator.share) {
+      await navigator.share({ title: shareTitle, url: shareUrl }).catch(() => {});
+    } else {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Link kopiert");
+    }
+  };
 
   const BookmarkButton = () => (
     <button
@@ -33,6 +46,19 @@ export default function PostCard({ post, variant = "compact", isBookmarked, onTo
         <Bookmark size={18} className="text-muted-foreground" />
       )}
     </button>
+  );
+
+  const ActionButtons = () => (
+    <div className="flex items-center gap-0.5">
+      <button
+        onClick={handleShare}
+        className="fiume-touch-target p-1.5 rounded-full transition-colors hover:bg-secondary"
+        aria-label="Teilen"
+      >
+        <Share2 size={16} className="text-muted-foreground" />
+      </button>
+      <BookmarkButton />
+    </div>
   );
 
   if (variant === "hero") {
@@ -67,16 +93,18 @@ export default function PostCard({ post, variant = "compact", isBookmarked, onTo
               <div className="flex items-center justify-between mt-3">
                 <div className="flex items-center gap-2">
                   {authorName && (
-                    <span className="text-white/60 text-[10px] sm:text-xs font-medium">
-                      {authorName}
-                    </span>
+                    <>
+                      <span className="text-white/60 text-[10px] sm:text-xs font-medium">
+                        {authorName}
+                      </span>
+                      <span className="text-white/40 text-[10px]">·</span>
+                    </>
                   )}
-                  <span className="text-white/40 text-[10px]">·</span>
                   <time className="text-[10px] sm:text-xs text-white/50 tracking-wide uppercase">
                     {formatDate(post.date)}
                   </time>
                 </div>
-                <BookmarkButton />
+                <ActionButtons />
               </div>
             </div>
           </div>
@@ -92,13 +120,16 @@ export default function PostCard({ post, variant = "compact", isBookmarked, onTo
             <div className="flex items-center justify-between mt-3">
               <div className="flex items-center gap-2">
                 {authorName && (
-                  <span className="text-muted-foreground text-xs">{authorName}</span>
+                  <>
+                    <span className="text-muted-foreground text-xs">{authorName}</span>
+                    <span className="text-muted-foreground/40 text-[8px]">·</span>
+                  </>
                 )}
                 <time className="text-xs text-muted-foreground tracking-wide uppercase">
                   {formatDate(post.date)}
                 </time>
               </div>
-              <BookmarkButton />
+              <ActionButtons />
             </div>
           </div>
         )}
@@ -129,13 +160,11 @@ export default function PostCard({ post, variant = "compact", isBookmarked, onTo
           className="font-serif text-sm font-semibold mt-0.5 leading-snug line-clamp-3"
           dangerouslySetInnerHTML={{ __html: post.title.rendered }}
         />
-        <div className="flex items-center gap-1.5 mt-1.5">
-          {authorName && (
-            <span className="text-[9px] text-muted-foreground font-medium truncate">{authorName}</span>
-          )}
-          <div className="ml-auto">
-            <BookmarkButton />
-          </div>
+        <div className="flex items-center justify-between mt-1.5">
+          <span className="text-[9px] text-muted-foreground font-medium truncate">
+            {authorName || "\u00A0"}
+          </span>
+          <ActionButtons />
         </div>
       </motion.article>
     );
@@ -156,21 +185,21 @@ export default function PostCard({ post, variant = "compact", isBookmarked, onTo
             dangerouslySetInnerHTML={{ __html: post.title.rendered }}
           />
         </div>
-        <div className="flex items-center gap-2 mt-1.5">
-          {authorName && (
-            <>
-              <span className="text-[10px] text-muted-foreground font-medium truncate max-w-[100px]">
-                {authorName}
-              </span>
-              <span className="text-muted-foreground/40 text-[8px]">·</span>
-            </>
-          )}
-          <time className="text-[10px] text-muted-foreground tracking-wide uppercase">
-            {formatDate(post.date)}
-          </time>
-          <div className="ml-auto">
-            <BookmarkButton />
+        <div className="flex items-center justify-between mt-1.5">
+          <div className="flex items-center gap-2 min-w-0">
+            {authorName && (
+              <>
+                <span className="text-[10px] text-muted-foreground font-medium truncate max-w-[100px]">
+                  {authorName}
+                </span>
+                <span className="text-muted-foreground/40 text-[8px]">·</span>
+              </>
+            )}
+            <time className="text-[10px] text-muted-foreground tracking-wide uppercase">
+              {formatDate(post.date)}
+            </time>
           </div>
+          <ActionButtons />
         </div>
       </div>
       {image && (

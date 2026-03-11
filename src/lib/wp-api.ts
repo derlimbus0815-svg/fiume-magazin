@@ -3,6 +3,7 @@ const WP_BASE = "https://fiume-magazin.com/wp-json/wp/v2";
 export interface WPPost {
   id: number;
   date: string;
+  link: string;
   slug: string;
   title: { rendered: string };
   excerpt: { rendered: string };
@@ -157,11 +158,18 @@ export function getPostAuthor(post: WPPost): { name: string; avatar?: string } |
 // In-flight promise cache to deduplicate concurrent author fetches
 const authorFetchCache = new Map<string, Promise<string | null>>();
 
+// CORS proxy chain – try each in order until one succeeds
+const CORS_PROXIES = [
+  (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  (url: string) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+  (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+];
+
 /**
- * Central author resolution: map → localStorage → scrape from web.
+ * Central author resolution: map → localStorage → scrape from web using post.link.
  * Deduplicates in-flight requests so infinite scroll doesn't spam.
  */
-export async function resolveAuthor(slug: string): Promise<string | null> {
+export async function resolveAuthor(slug: string, postLink?: string): Promise<string | null> {
   // 1. Static map
   if (AUTHOR_MAP[slug]) return AUTHOR_MAP[slug];
 
@@ -171,46 +179,66 @@ export async function resolveAuthor(slug: string): Promise<string | null> {
     if (cached) return cached;
   } catch {}
 
-  // 3. Deduplicated fetch
-  if (authorFetchCache.has(slug)) return authorFetchCache.get(slug)!;
+  // Need a link to scrape
+  if (!postLink) return null;
 
-  const promise = fetchAuthorFromWeb(slug);
-  authorFetchCache.set(slug, promise);
+  // 3. Deduplicated fetch
+  const cacheKey = slug;
+  if (authorFetchCache.has(cacheKey)) return authorFetchCache.get(cacheKey)!;
+
+  const promise = fetchAuthorFromWeb(slug, postLink);
+  authorFetchCache.set(cacheKey, promise);
 
   try {
     const result = await promise;
     return result;
   } finally {
-    // Keep successful results cached for 60s to avoid re-fetching
-    setTimeout(() => authorFetchCache.delete(slug), 60_000);
+    setTimeout(() => authorFetchCache.delete(cacheKey), 60_000);
   }
 }
 
-async function fetchAuthorFromWeb(slug: string): Promise<string | null> {
-  try {
-    const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://fiume-magazin.com/${slug}/`)}`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const html = await res.text();
-
-    // Try multiple patterns for "Von [Name]"
-    const patterns = [
-      /elementor-post-info__item--type-custom[^>]*>[\s]*Von\s+([^<]+)/i,
-      />Von\s+([^<]{2,60})</i,
-      /class="[^"]*author[^"]*"[^>]*>[\s]*Von\s+([^<]+)/i,
-    ];
-
-    for (const pattern of patterns) {
-      const match = html.match(pattern);
-      if (match?.[1]) {
-        const name = match[1].trim();
-        if (name && name !== "admin" && name.length > 1) {
-          try { localStorage.setItem(`fiume_author_${slug}`, name); } catch {}
-          return name;
-        }
-      }
+function extractAuthorFromHtml(html: string): string | null {
+  const patterns = [
+    /elementor-post-info__item--type-custom[^>]*>[\s]*Von\s+([^<]+)/i,
+    />Von\s+([^<]{2,60})</i,
+    /class="[^"]*author[^"]*"[^>]*>[\s]*Von\s+([^<]+)/i,
+  ];
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match?.[1]) {
+      const name = match[1].trim();
+      if (name && name !== "admin" && name.length > 1) return name;
     }
-  } catch {}
+  }
+  return null;
+}
+
+async function fetchWithProxyChain(targetUrl: string): Promise<string | null> {
+  for (const makeProxy of CORS_PROXIES) {
+    try {
+      const res = await fetch(makeProxy(targetUrl));
+      if (res.ok) return await res.text();
+    } catch {}
+  }
+  return null;
+}
+
+async function fetchAuthorFromWeb(slug: string, postLink: string, retry = true): Promise<string | null> {
+  const html = await fetchWithProxyChain(postLink);
+
+  if (html) {
+    const name = extractAuthorFromHtml(html);
+    if (name) {
+      try { localStorage.setItem(`fiume_author_${slug}`, name); } catch {}
+      return name;
+    }
+  }
+
+  // Retry once after 5s if all proxies failed
+  if (retry) {
+    await new Promise((r) => setTimeout(r, 5000));
+    return fetchAuthorFromWeb(slug, postLink, false);
+  }
 
   return null;
 }
